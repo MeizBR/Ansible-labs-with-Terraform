@@ -9,3 +9,4 @@ variable configuration {
   description = "EC2 configuration"
   default = [{}]
 }
+variable private_key_location {}

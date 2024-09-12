@@ -29,4 +29,5 @@ module "webserver" {
     env_prefix = var.env_prefix
     vpc_id = aws_vpc.vpc.id
     configuration = var.configuration
+    private_key_location = var.private_key_location
 }

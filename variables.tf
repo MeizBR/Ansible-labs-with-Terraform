@@ -7,3 +7,4 @@ variable ip_addresses_range {}
 variable instance_type {}
 variable image_name {}
 variable configuration {}
+variable private_key_location {}

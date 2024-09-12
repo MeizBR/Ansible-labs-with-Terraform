@@ -14,3 +14,5 @@ configuration = [
   },
   
 ]
+
+private_key_location = "/home/meiezbr/Downloads/ec2-instance-terraform.pem"
