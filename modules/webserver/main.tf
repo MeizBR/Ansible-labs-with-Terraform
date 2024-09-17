@@ -1,3 +1,15 @@
+terraform {
+  required_providers {
+    null = {
+      source = "hashicorp/null"
+    }
+    random = {
+      source = "hashicorp/random"
+      version = "3.6.3"
+    }
+  }
+}
+
 resource "aws_security_group" "sg" {
     name = "sg"
     vpc_id = var.vpc_id
@@ -29,8 +41,8 @@ resource "aws_security_group" "sg" {
     }
 }
 
-data "aws_ami" "latest_ubuntu_image" {
-    owners = ["099720109477"]
+data "aws_ami" "latest_amazon_linux_image" {
+    owners = ["137112412989"]
     filter {
         name = "name"
         values = [var.image_name]
@@ -57,8 +69,10 @@ locals {
 
 
 resource "aws_instance" "aws_master_server" {
-    ami = data.aws_ami.latest_ubuntu_image.id
+    ami = data.aws_ami.latest_amazon_linux_image.id
     instance_type = var.instance_type
+
+    iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
 
     subnet_id = var.subnet_id
     vpc_security_group_ids = [aws_security_group.sg.id]
@@ -67,49 +81,59 @@ resource "aws_instance" "aws_master_server" {
     associate_public_ip_address = true
     key_name = "ec2-instance-terraform"
 
-    connection {
-        type     = "ssh"
-        user     = "ubuntu"
-        private_key = file(var.private_key_location)
-        host     = self.public_ip
-    }
+    # connection {
+    #     type     = "ssh"
+    #     user     = "ec2-user"
+    #     private_key = file(var.private_key_location)
+    #     host     = self.public_ip
+    # }
 
-    # change hostname
-    provisioner "file" {
-        source = "/home/meiezbr/Desktop/ansible-labs-with-terraform-freelance-project/modules/webserver/change-hostname.sh"
-        destination = "/home/ubuntu/change-hostname-on-ec2.sh"
-    }
+    # # change hostname
+    # provisioner "file" {
+    #     source = "./scripts/change-hostname.sh"
+    #     destination = "change-hostname-on-ec2.sh"
+    # }
 
-    provisioner "remote-exec" {
-        inline = [
-            "chmod +x /home/ubuntu/change-hostname-on-ec2.sh",
-            "/home/ubuntu/change-hostname-on-ec2.sh"
-        ]
-    }
+    # provisioner "remote-exec" {
+    #     inline = [
+    #         "chmod +x change-hostname-on-ec2.sh",
+    #         "./change-hostname-on-ec2.sh"
+    #     ]
+    # }
 
-    #sleep 5 seconds before proceeding to ansible installation
-    provisioner "remote-exec" {
-        inline = [
-            "sleep 5"
-        ]
-    }
+    # # install ansible and disable host key checking
+    # provisioner "file" {
+    #     source = "./scripts/install-ansible.sh"
+    #     destination = "install-ansible-on-ec2.sh"
+    # }
 
-    # install ansible
-    provisioner "file" {
-        source = "/home/meiezbr/Desktop/ansible-labs-with-terraform-freelance-project/modules/webserver/install-ansible.sh"
-        destination = "/home/ubuntu/install-ansible-on-ec2.sh"
-    }
+    # provisioner "remote-exec" {
+    #     inline = [
+    #         "chmod +x install-ansible-on-ec2.sh",
+    #         "./install-ansible-on-ec2.sh",
+    #         "echo '[defaults]' | sudo tee /etc/ansible/ansible.cfg",
+    #         "echo 'host_key_checking = False' | sudo tee -a /etc/ansible/ansible.cfg"
+    #     ]
+    # }
 
-    provisioner "remote-exec" {
-        inline = [
-            "chmod +x /home/ubuntu/install-ansible-on-ec2.sh",
-            "/home/ubuntu/install-ansible-on-ec2.sh"
-        ]
-    }
+    # # enable username/password authentication
+    # provisioner "remote-exec" {
+    #     inline = [
+    #         "echo 'Enabling username/password authentication'",
+    #         "sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config",
+    #         "echo 'ec2-user:${random_string.random_password.result}' | sudo chpasswd",
+    #         "sudo systemctl restart sshd.service",
+    #         "echo 'Username/password authentication successfully configured!'"
+    #     ]
+    # }
 
-    provisioner "local-exec" {
-        command = "echo 'This is the ec2 master instance public ip : ${self.public_ip}' > master_ip_output.txt"
-    }
+    # provisioner "remote-exec" {
+    #     inline = [
+    #         "ssh-keygen -q -t rsa -N '' -f ~/.ssh/id_rsa <<<y >/dev/null 2>&1",
+    #         "sleep 2",
+    #         "aws s3 cp ~/.ssh/id_rsa.pub s3://ansible-labs/id_rsa.pub"
+    #     ]
+    # }
 
     tags = {
         Name: "master"
@@ -117,10 +141,20 @@ resource "aws_instance" "aws_master_server" {
     }
 }
 
+resource "null_resource" "create_inventory_file" {
+    provisioner "local-exec" {
+        command = "echo '[webservers]' > ./hosts.ini"
+    }
+}
+
 resource "aws_instance" "aws_clients_servers" {
+    depends_on = [aws_instance.aws_master_server]
+
     for_each = {for server in local.instances: server.instance_name =>  server}
-    ami = data.aws_ami.latest_ubuntu_image.id
+    ami = data.aws_ami.latest_amazon_linux_image.id
     instance_type = var.instance_type
+
+    iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
 
     subnet_id = var.subnet_id
     vpc_security_group_ids = [aws_security_group.sg.id]
@@ -129,29 +163,66 @@ resource "aws_instance" "aws_clients_servers" {
     associate_public_ip_address = true
     key_name = "ec2-instance-terraform"
 
-    connection {
-        type     = "ssh"
-        user     = "ubuntu"
-        private_key = file(var.private_key_location)
-        host     = self.public_ip
-    }
+    # connection {
+    #     type     = "ssh"
+    #     user     = "ubuntu"
+    #     private_key = file(var.private_key_location)
+    #     host     = self.public_ip
+    # }
 
-    provisioner "remote-exec" {
-        inline = [
-            "echo 'Changing the hostname to ${each.value.instance_name}'",
-            "sudo hostnamectl set-hostname ${each.value.instance_name}",
-            "echo '${each.value.instance_name}' | sudo tee /etc/hostname",
-            "echo '127.0.0.1 ${each.value.instance_name}' | sudo tee -a /etc/hosts",
-            "echo 'Hostname changed successfully!'"
-        ]
-    }
+    # provisioner "remote-exec" {
+    #     inline = [
+    #         "echo 'Changing the hostname to ${each.value.instance_name}'",
+    #         "sudo hostnamectl set-hostname ${each.value.instance_name}",
+    #         "echo '${each.value.instance_name}' | sudo tee /etc/hostname",
+    #         "echo '127.0.0.1 ${each.value.instance_name}' | sudo tee -a /etc/hosts",
+    #         "echo 'Hostname changed successfully!'"
+    #     ]
+    # }
+
+    # provisioner "remote-exec" {
+    #     inline = [
+    #         "sleep 2",
+    #         "aws s3 cp s3://ansible-labs/id_rsa.pub ~/"
+    #     ]
+    # }
+
+    # provisioner "remote-exec" {
+    #     inline = [
+    #         "sleep 5",
+    #         "cat ~/id_rsa.pub >> ~/.ssh/authorized_keys"
+    #     ]
+    # }
 
     provisioner "local-exec" {
-        command = "echo 'this another ec2 client instance public ip : ${self.public_ip}' >> clients_ip_output.txt"
+        command = "echo '${self.public_ip} ansible_user=ec2-user' >> ./hosts.ini"
     }
 
     tags = {
         Name: "${each.value.instance_name}"
         Description: "ansible-labs-clients-instances-group"
+    }
+}
+
+resource "null_resource" "fill_ansible_inventory" {
+  depends_on = [aws_instance.aws_master_server, aws_instance.aws_clients_servers]
+
+    connection {
+        type     = "ssh"
+        user     = "ec2-user"
+        # password = random_string.random_password.result
+        private_key = file(var.private_key_location)
+        host     = aws_instance.aws_master_server.public_ip
+    }
+
+    provisioner "file" {
+        source = "./hosts.ini"
+        destination = "hosts.ini"
+    }
+
+    provisioner "remote-exec" {
+        inline = [
+            "cat ~/hosts.ini >> ~/hosts11.ini"
+        ]
     }
 }

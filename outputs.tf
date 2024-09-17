@@ -16,3 +16,8 @@ output "ec2_clients_instances_instances_names" {
 output "ec2_clients_instances_public_ips" {
     value = [for i in module.webserver.clients_instances : i.public_ip]
 }
+
+# display random generated password
+output "random_password_output" {
+    value = module.webserver.generated_random_password.result
+}

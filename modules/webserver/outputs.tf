@@ -7,3 +7,7 @@ output "clients_instances" {
     value = aws_instance.aws_clients_servers
     description = "EC2 clients instances details"
 }
+
+output "generated_random_password" {
+    value = random_string.random_password
+}
