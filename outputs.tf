@@ -21,3 +21,8 @@ output "ec2_clients_instances_public_ips" {
 output "random_password_output" {
     value = module.webserver.generated_random_password.result
 }
+
+# display random generated password
+output "my_public_ip_output" {
+    value = "${chomp(module.webserver.my_public_ip.response_body)}"
+}

@@ -11,3 +11,7 @@ output "clients_instances" {
 output "generated_random_password" {
     value = random_string.random_password
 }
+
+output "my_public_ip" {
+  value = data.http.icanhazip
+}
