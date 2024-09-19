@@ -14,4 +14,4 @@ configuration = [
   }
 ]
 
-private_key_location = "/home/meiezbr/Downloads/ec2-instance-terraform.pem"
+private_key_location = "~/.ssh/ec2-instance-terraform.pem"

@@ -14,10 +14,10 @@ terraform {
   }
 }
 
-resource "aws_security_group" "sg" {
+resource "aws_security_group" "master_instance_sg" {
     depends_on = [data.http.icanhazip]
 
-    name = "sg"
+    name = "master_instance_sg"
     vpc_id = var.vpc_id
 
     ingress {
@@ -34,6 +34,13 @@ resource "aws_security_group" "sg" {
         cidr_blocks = ["0.0.0.0/0"]
     }
 
+    ingress {
+        from_port = 8
+        to_port = 0
+        protocol = "icmp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
     egress {
         from_port = 0
         to_port = 0
@@ -43,7 +50,45 @@ resource "aws_security_group" "sg" {
     }
 
     tags = {
-        Name: "${var.env_prefix}-sg"
+        Name: "${var.env_prefix}-master_instance_sg"
+    }
+}
+
+resource "aws_security_group" "client_instances_sg" {
+    name = "client_instances_sg"
+    vpc_id = var.vpc_id
+
+    ingress {
+        from_port = 22
+        to_port = 22
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    ingress {
+        from_port = 80
+        to_port = 80
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    ingress {
+        from_port = 8
+        to_port = 0
+        protocol = "icmp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+
+    egress {
+        from_port = 0
+        to_port = 0
+        protocol = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+        prefix_list_ids = []
+    }
+
+    tags = {
+        Name: "${var.env_prefix}-client_instances_sg"
     }
 }
 
@@ -81,7 +126,7 @@ resource "aws_instance" "aws_master_server" {
     iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
 
     subnet_id = var.subnet_id
-    vpc_security_group_ids = [aws_security_group.sg.id]
+    vpc_security_group_ids = [aws_security_group.master_instance_sg.id]
     availability_zone = var.subnet_avail_zone
 
     associate_public_ip_address = true
@@ -163,7 +208,7 @@ resource "aws_instance" "aws_clients_servers" {
     iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
 
     subnet_id = var.subnet_id
-    vpc_security_group_ids = [aws_security_group.sg.id]
+    vpc_security_group_ids = [aws_security_group.client_instances_sg.id]
     availability_zone = var.subnet_avail_zone
 
     associate_public_ip_address = true
