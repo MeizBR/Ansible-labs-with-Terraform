@@ -118,8 +118,13 @@ locals {
   instances = flatten(local.serverconfig)
 }
 
+resource "aws_key_pair" "deployer" {
+  key_name   = var.key_name
+  public_key = file("~/.ssh/id_rsa.pub")
+}
 
 resource "aws_instance" "aws_master_server" {
+    depends_on = [aws_key_pair.deployer]
     ami = data.aws_ami.latest_amazon_linux_image.id
     instance_type = var.instance_type
 
@@ -130,7 +135,7 @@ resource "aws_instance" "aws_master_server" {
     availability_zone = var.subnet_avail_zone
 
     associate_public_ip_address = true
-    key_name = "ec2-instance-terraform"
+    key_name = aws_key_pair.deployer.key_name
 
     connection {
         type     = "ssh"
@@ -194,12 +199,12 @@ resource "aws_instance" "aws_master_server" {
 
 resource "null_resource" "create_inventory_file" {
     provisioner "local-exec" {
-        command = "echo '[webservers]' > ./hosts.ini"
+        command = var.os == "Linux" ? "echo '[webservers]' > ./hosts.ini" : "echo [webservers] > ./hosts.ini"
     }
 }
 
 resource "aws_instance" "aws_clients_servers" {
-    depends_on = [aws_instance.aws_master_server]
+    depends_on = [aws_key_pair.deployer, aws_instance.aws_master_server]
 
     for_each = {for server in local.instances: server.instance_name =>  server}
     ami = data.aws_ami.latest_amazon_linux_image.id
@@ -212,7 +217,7 @@ resource "aws_instance" "aws_clients_servers" {
     availability_zone = var.subnet_avail_zone
 
     associate_public_ip_address = true
-    key_name = "ec2-instance-terraform"
+    key_name = aws_key_pair.deployer.key_name
 
     connection {
         type     = "ssh"
@@ -231,6 +236,17 @@ resource "aws_instance" "aws_clients_servers" {
         ]
     }
 
+    # enable username/password authentication
+    provisioner "remote-exec" {
+        inline = [
+            "echo 'Enabling username/password authentication'",
+            "sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config",
+            "echo 'ec2-user:${random_string.random_password.result}' | sudo chpasswd",
+            "sudo systemctl restart sshd.service",
+            "echo 'Username/password authentication successfully configured!'"
+        ]
+    }
+
     provisioner "remote-exec" {
         inline = [
             "sleep 2",
@@ -246,7 +262,7 @@ resource "aws_instance" "aws_clients_servers" {
     }
 
     provisioner "local-exec" {
-        command = "echo '${self.public_ip} ansible_user=ec2-user' >> ./hosts.ini"
+        command = var.os == "Linux" ? "echo '${self.public_ip} ansible_user=ec2-user' >> ./hosts.ini" : "echo ${self.public_ip} ansible_user=ec2-user >> ./hosts.ini"
     }
 
     tags = {
@@ -256,7 +272,7 @@ resource "aws_instance" "aws_clients_servers" {
 }
 
 resource "null_resource" "fill_ansible_inventory" {
-  depends_on = [aws_instance.aws_master_server, aws_instance.aws_clients_servers]
+  depends_on = [aws_key_pair.deployer, aws_instance.aws_master_server, aws_instance.aws_clients_servers]
 
     connection {
         type     = "ssh"

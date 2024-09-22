@@ -7,7 +7,7 @@ resource "aws_s3_bucket" "ansible_labs" {
   force_destroy = true
 
   tags = {
-    Name: "${var.env_prefix}-ihrm_server"
+    Name: "${var.env_prefix}-ansible_labs_s3_bucket"
   }
 }
 
@@ -36,5 +36,7 @@ module "webserver" {
     env_prefix = var.env_prefix
     vpc_id = aws_vpc.vpc.id
     configuration = var.configuration
+    key_name = var.key_name
     private_key_location = var.private_key_location
+    os = var.os
 }

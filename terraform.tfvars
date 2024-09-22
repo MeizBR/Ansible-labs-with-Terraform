@@ -13,5 +13,6 @@ configuration = [
     no_of_instances = "2"
   }
 ]
-
-private_key_location = "~/.ssh/ec2-instance-terraform.pem"
+key_name = "ansible-labs-terraform"
+private_key_location = "~/.ssh/id_rsa"
+os = "Linux"
