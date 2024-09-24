@@ -12,6 +12,7 @@ resource "aws_s3_bucket" "ansible_labs" {
 }
 
 resource "aws_vpc" "vpc" {
+    depends_on = [aws_s3_bucket.ansible_labs]
     cidr_block = var.vpc_cidr_block
     enable_dns_hostnames = true
     tags = {
@@ -20,6 +21,7 @@ resource "aws_vpc" "vpc" {
 }
 
 module "subnet" {
+    depends_on = [aws_s3_bucket.ansible_labs, aws_vpc.vpc]
     source = "./modules/subnet"
     subnet_cidr_block = var.subnet_cidr_block
     subnet_avail_zone = var.subnet_avail_zone
@@ -28,6 +30,7 @@ module "subnet" {
 }
 
 module "webserver" {
+    depends_on = [aws_s3_bucket.ansible_labs, aws_vpc.vpc, module.subnet]
     source = "./modules/webserver"
     ip_addresses_range = var.ip_addresses_range
     image_name = var.image_name

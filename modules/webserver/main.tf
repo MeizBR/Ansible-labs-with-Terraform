@@ -298,6 +298,6 @@ resource "null_resource" "detach-s3-policy-from-iam-role" {
   depends_on = [aws_instance.aws_master_server, aws_instance.aws_clients_servers]
 
     provisioner "local-exec" {
-        command = "chmod +x ./modules/webserver/scripts/detach-s3-policy-from-iam-role.sh && ./modules/webserver/scripts/detach-s3-policy-from-iam-role.sh"
+        command = var.os == "Linux" ? "chmod +x ./modules/webserver/scripts/detach-s3-policy-from-iam-role.sh && ./modules/webserver/scripts/detach-s3-policy-from-iam-role.sh" : "powershell.exe -Command ./modules/webserver/scripts/detach-s3-policy-from-iam-role.ps1"
     }
 }
