@@ -28,8 +28,8 @@ Ensure you have a private/public key pair generated and stored in the following 
 - **Windows**: `C:\Users\{your-username}\.ssh`
 
 The key pair consists of:
-- **Private key**: `id_rsa` (used to connect to the instances)
-- **Public key**: `id_rsa.pub` (uploaded to AWS)
+- **Private key**: `id_rsa` (the name can vary depending on the type of algorithm used to generate the keys) (used to connect to the instances)
+- **Public key**: `id_rsa.pub` (the name can vary depending on the type of algorithm used to generate the keys) (uploaded to AWS)
 
 #### Generating SSH Keys (if not available)
 If you don't have an SSH key pair, generate one using the command below:
@@ -42,7 +42,19 @@ When prompted for a passphrase, leave it empty by pressing `Enter`. This is impo
 
 ### Adjusting Variables in `terraform.tfvars`
 - Navigate to the `terraform.tfvars` file.
-- Update the `os` variable at the end of the file to match your local operating system (e.g., Linux or Windows), which is required to execute Terraform.
+- Update the `os` variable to match your local operating system (e.g., Linux or Windows), which is required to execute Terraform.
+- Update the `private_key_location` variable to match the private key name.
+- Update the `region` variable to match your region.
+- Update the `subnet_avail_zone` variable to match your availability zone.
+
+### Adjusting the Public Key in `./modules/webserver/main.tf`
+In the `./modules/webserver/main.tf` file, you'll need to set the correct path to your SSH public key. Update the `public_key` attribute of the `aws_key_pair` resource as follows:
+
+```hcl
+resource "aws_key_pair" "deployer" {
+  key_name   = var.key_name
+  public_key = file("~/.ssh/your_public_key_name.pub") # Replace with the actual path to your public key
+}
 
 ## Terraform Commands
 
@@ -73,6 +85,7 @@ When prompted for a passphrase, leave it empty by pressing `Enter`. This is impo
 ## Connecting to AWS EC2 Instances
 
 Once the instances are provisioned, connect to them using SSH:
+(the names of the public and private keys can vary depending on the type of algorithm used to generate the keys)
 
 - **Linux**:
   ```bash
