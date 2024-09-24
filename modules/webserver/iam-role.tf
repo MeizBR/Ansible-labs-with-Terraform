@@ -27,6 +27,30 @@ EOT
     }
 }
 
+resource "aws_iam_policy" "EC2DescribeInstances" {
+  name        = "EC2DescribeInstances"
+  description = "Policy to describe EC2 instances for Ansible inventory"
+
+  policy = <<EOT
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOT
+
+  tags = {
+    Name = "${var.env_prefix}-ec2_describe_instances_policy"
+  }
+}
+
 resource "aws_iam_role" "allow_ec2_s3_interaction" {
   name = "allow-ec2-s3-interaction"
 
@@ -51,6 +75,11 @@ resource "aws_iam_role" "allow_ec2_s3_interaction" {
 resource "aws_iam_role_policy_attachment" "attach_s3_policy_to_ec2_role" {
   role       = aws_iam_role.allow_ec2_s3_interaction.name
   policy_arn = aws_iam_policy.S3BucketListReadWrite.arn
+}
+
+resource "aws_iam_role_policy_attachment" "attach_ec2_policy_to_ec2_role" {
+  role       = aws_iam_role.allow_ec2_s3_interaction.name
+  policy_arn = aws_iam_policy.EC2DescribeInstances.arn
 }
 
 resource "aws_iam_instance_profile" "ec2_instance_profile" {

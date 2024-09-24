@@ -24,7 +24,8 @@ resource "aws_security_group" "master_instance_sg" {
         from_port = 22
         to_port = 22
         protocol = "tcp"
-        cidr_blocks = ["${chomp(data.http.icanhazip.response_body)}/32"]
+        # cidr_blocks = ["${chomp(data.http.icanhazip.response_body)}/32"]
+        cidr_blocks = ["0.0.0.0/0"]
     }
 
     ingress {
@@ -290,5 +291,13 @@ resource "null_resource" "fill_ansible_inventory" {
         inline = [
             "cat ~/hosts.ini | sudo tee -a /etc/ansible/hosts"
         ]
+    }
+}
+
+resource "null_resource" "detach-s3-policy-from-iam-role" {
+  depends_on = [aws_instance.aws_master_server, aws_instance.aws_clients_servers]
+
+    provisioner "local-exec" {
+        command = "chmod +x ./modules/webserver/scripts/detach-s3-policy-from-iam-role.sh && ./modules/webserver/scripts/detach-s3-policy-from-iam-role.sh"
     }
 }
