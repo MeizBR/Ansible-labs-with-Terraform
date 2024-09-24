@@ -55,6 +55,7 @@ resource "aws_key_pair" "deployer" {
   key_name   = var.key_name
   public_key = file("~/.ssh/your_public_key_name.pub") # Replace with the actual path to your public key
 }
+```hcl
 
 ## Terraform Commands
 
