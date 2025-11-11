@@ -94,10 +94,12 @@ resource "aws_security_group" "client_instances_sg" {
 }
 
 data "aws_ami" "latest_amazon_linux_image" {
-    owners = ["137112412989"]
+    most_recent = true
+    owners      = ["amazon"]
+
     filter {
-        name = "name"
-        values = [var.image_name]
+      name   = "name"
+      values = ["al2023-ami-*-kernel-6.1-x86_64"]
     }
     filter {
         name = "virtualization-type"
