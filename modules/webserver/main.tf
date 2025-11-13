@@ -296,6 +296,38 @@ resource "null_resource" "fill_ansible_inventory" {
     }
 }
 
+resource "null_resource" "write-logs-s3-bucket" {
+  depends_on = [aws_instance.aws_master_server, aws_instance.aws_clients_servers]
+
+  provisioner "local-exec" {
+    command = <<EOT
+echo "----------------------------------------" > terraform_logs.txt
+echo "Logging Terraform EC2 Information" >> terraform_logs.txt
+echo "----------------------------------------" >> terraform_logs.txt
+
+# Master instance info
+echo 'Master Instance Name: ${aws_instance.aws_master_server.tags["Name"]}' >> terraform_logs.txt
+echo 'Master Public IP: ${aws_instance.aws_master_server.public_ip}' >> terraform_logs.txt
+
+# Client instances info
+echo 'Client Instances:' >> terraform_logs.txt
+%{ for k, v in aws_instance.aws_clients_servers }
+echo "  - ${v.tags["Name"]}: ${v.public_ip}" >> terraform_logs.txt
+%{ endfor }
+
+# Random password
+echo "Random Password: ${random_string.random_password.result}" >> terraform_logs.txt
+
+echo "----------------------------------------" >> terraform_logs.txt
+echo "Logs written successfully to terraform_logs.txt"
+EOT
+  }
+
+  provisioner "local-exec" {
+        command = "aws s3 cp terraform_logs.txt s3://ansible-labs/terraform_logs.txt"
+    }
+}
+
 resource "null_resource" "detach-s3-policy-from-iam-role" {
   depends_on = [aws_instance.aws_master_server, aws_instance.aws_clients_servers]
 
